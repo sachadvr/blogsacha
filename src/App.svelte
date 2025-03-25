@@ -37,7 +37,7 @@
   <header class="fixed w-full top-0 z-40 transition-all duration-300 {isScrolled ? 'shadow-lg bg-white/80 backdrop-blur-sm' : ''}">
     <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
       <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
-        Modern Blog
+        My Taste Blog
       </h1>
       <div>
         {#if $user}

@@ -33,6 +33,36 @@
   let selectedTheme: number | null = null;
   let filteredPosts: Post[] = [];
 
+  let editingPost: Post | null = null;
+let editedTitle = '';
+let editedContent = '';
+
+function startEditing(post: Post) {
+  editingPost = post;
+  editedTitle = post.title;
+  editedContent = post.content;
+}
+
+async function saveEdit() {
+  if (!editingPost) return;
+  const { error } = await supabase
+    .from('posts')
+    .update({
+      title: editedTitle,
+      content: editedContent
+    })
+    .eq('id', editingPost.id);
+
+  if (!error) {
+    const updated = $posts.map(p => p.id === editingPost?.id ? { ...p, title: editedTitle, content: editedContent } : p);
+    posts.set(updated);
+    editingPost = null;
+  } else {
+    console.error(error);
+  }
+}
+
+
   onMount(async () => {
     try {
       // Fetch themes
@@ -79,6 +109,7 @@
   }
 </script>
 
+
 <div class="max-w-4xl mx-auto">
   {#if $user}
     <div class="mb-8 flex justify-end" transition:slide>
@@ -93,6 +124,33 @@
       </button>
     </div>
   {/if}
+
+  {#if editingPost}
+  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" transition:fade>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl m-4 p-6 space-y-4 overflow-y-auto max-h-[80vh]">
+      <h2 class="text-xl font-bold">Modifier le post</h2>
+      <input
+        class="w-full border rounded p-2"
+        bind:value={editedTitle}
+        placeholder="Titre"
+      />
+      <textarea
+        class="w-full h-40 border rounded p-2 font-mono"
+        bind:value={editedContent}
+        placeholder="Contenu markdown"
+      ></textarea>
+      <div class="prose prose-purple max-h-64 overflow-auto border p-4 rounded bg-gray-50">
+        {@html marked(editedContent)}
+      </div>
+      <div class="flex justify-end gap-2">
+        <button on:click={() => editingPost = null} class="text-gray-600 hover:underline">Annuler</button>
+        <button on:click={saveEdit} class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+          Sauvegarder
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
   {#if showCreatePost}
     <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" transition:fade>
@@ -155,6 +213,14 @@
   {:else}
     <div class="space-y-8">
       {#each filteredPosts as post}
+      {#if $user?.email === post.profiles?.email}
+          <button
+            class="text-sm bg-purple-600 hover:underline p-5 text-white"
+            on:click={() => startEditing(post)}
+          >
+            Modifier
+          </button>
+        {/if}
         <article class="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300" transition:slide>
           <div class="flex justify-between items-start mb-6">
             <div>
