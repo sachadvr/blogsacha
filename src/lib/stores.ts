@@ -20,5 +20,9 @@ interface Post {
   themes?: Theme;
 }
 
-export const user = writable(null);
+interface User {
+  email: string;
+}
+
+export const user = writable<User | null>(null);
 export const posts = writable<Post[]>([]);

@@ -1,9 +1,14 @@
 <script lang="ts">
-  import { onMount, fade, slide } from 'svelte/transition';
+  import { fade, slide } from 'svelte/transition';
+  import { onMount } from 'svelte';
   import { supabase } from './lib/supabase';
   import { user } from './lib/stores';
   import Auth from './lib/Auth.svelte';
   import Posts from './lib/Posts.svelte';
+
+  interface User {
+    email: string;
+  }
 
   let showAuth = false;
   let isScrolled = false;
@@ -29,7 +34,7 @@
 </script>
 
 <main class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-  <header class="fixed w-full top-0 z-40 transition-all duration-300" class:shadow-lg={isScrolled} class:bg-white/80={isScrolled} class:backdrop-blur-sm={isScrolled}>
+  <header class="fixed w-full top-0 z-40 transition-all duration-300 {isScrolled ? 'shadow-lg bg-white/80 backdrop-blur-sm' : ''}">
     <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
       <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
         Modern Blog
