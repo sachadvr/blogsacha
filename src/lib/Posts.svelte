@@ -32,36 +32,49 @@
   let themes: Theme[] = [];
   let selectedTheme: number | null = null;
   let filteredPosts: Post[] = [];
+  let searchQuery = '';
 
   let editingPost: Post | null = null;
-let editedTitle = '';
-let editedContent = '';
+  let editedTitle = '';
+  let editedContent = '';
 
-function startEditing(post: Post) {
-  editingPost = post;
-  editedTitle = post.title;
-  editedContent = post.content;
-}
+  async function deletePost(postId: number) {
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId);
 
-async function saveEdit() {
-  if (!editingPost) return;
-  const { error } = await supabase
-    .from('posts')
-    .update({
-      title: editedTitle,
-      content: editedContent
-    })
-    .eq('id', editingPost.id);
-
-  if (!error) {
-    const updated = $posts.map(p => p.id === editingPost?.id ? { ...p, title: editedTitle, content: editedContent } : p);
-    posts.set(updated);
-    editingPost = null;
-  } else {
-    console.error(error);
+    if (!error) {
+      posts.update(p => p.filter(post => post.id !== postId));
+    } else {
+      console.error(error);
+    }
   }
-}
 
+  function startEditing(post: Post) {
+    editingPost = post;
+    editedTitle = post.title;
+    editedContent = post.content;
+  }
+
+  async function saveEdit() {
+    if (!editingPost) return;
+    const { error } = await supabase
+      .from('posts')
+      .update({
+        title: editedTitle,
+        content: editedContent
+      })
+      .eq('id', editingPost.id);
+
+    if (!error) {
+      const updated = $posts.map(p => p.id === editingPost?.id ? { ...p, title: editedTitle, content: editedContent } : p);
+      posts.set(updated);
+      editingPost = null;
+    } else {
+      console.error(error);
+    }
+  }
 
   onMount(async () => {
     try {
@@ -101,11 +114,23 @@ async function saveEdit() {
   });
 
   function updateFilteredPosts() {
-    filteredPosts = $posts.filter((post: Post) => !selectedTheme || post.theme_id === selectedTheme);
+    filteredPosts = $posts.filter((post: Post) => {
+      const matchesTheme = !selectedTheme || post.theme_id === selectedTheme;
+      const matchesSearch = !searchQuery || 
+        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.content.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesTheme && matchesSearch;
+    });
   }
 
   $: {
     updateFilteredPosts();
+  }
+
+  $: {
+    if (searchQuery !== undefined) {
+      updateFilteredPosts();
+    }
   }
 </script>
 
@@ -181,10 +206,35 @@ async function saveEdit() {
 
   <div class="mb-8">
     <div class="border-b border-gray-200">
+      <div class="mb-4">
+        <div class="relative">
+          <input
+            type="text"
+            bind:value={searchQuery}
+            placeholder="Rechercher dans les posts..."
+            class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          />
+          <svg
+            class="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </div>
+      </div>
       <nav class="-mb-px flex flex-wrap gap-4 sm:gap-8">
         <button
           class="py-4 px-1 border-b-2 transition-all duration-200 {!selectedTheme ? 'border-purple-600 font-medium text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
-          on:click={() => selectedTheme = null}
+          on:click={() => {
+            selectedTheme = null;
+            updateFilteredPosts();
+          }}
         >
           All Posts
         </button>
@@ -213,14 +263,6 @@ async function saveEdit() {
   {:else}
     <div class="space-y-8">
       {#each filteredPosts as post}
-      {#if $user?.email === post.profiles?.email}
-          <button
-            class="text-sm bg-purple-600 hover:underline p-5 text-white"
-            on:click={() => startEditing(post)}
-          >
-            Modifier
-          </button>
-        {/if}
         <article class="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300" transition:slide>
           <div class="flex justify-between items-start mb-6">
             <div>
@@ -239,11 +281,27 @@ async function saveEdit() {
                 <span>{new Date(post.created_at).toLocaleDateString()}</span>
               </div>
             </div>
-            {#if post.themes}
-              <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                {post.themes.name}
-              </span>
-            {/if}
+            <div class="flex gap-2">
+              {#if post.themes}
+                <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                  {post.themes.name}
+                </span>
+              {/if}
+              {#if $user?.email === post.profiles?.email}
+                <button
+                  class="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-full"
+                  on:click={() => deletePost(post.id)}
+                >
+                  Supprimer
+                </button>
+                <button
+                  class="text-sm bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-full"
+                  on:click={() => startEditing(post)}
+                >
+                  Modifier
+                </button>
+              {/if}
+            </div>
           </div>
           <div class="prose prose-lg max-w-none prose-purple">
             {@html marked(post.content)}
